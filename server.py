@@ -9,6 +9,7 @@ from flask_jwt_extended import (
 )
 from dotenv import load_dotenv
 from datetime import timedelta
+from pymongo.errors import ServerSelectionTimeoutError
 
 # Load environment variables
 load_dotenv()
@@ -20,10 +21,21 @@ jwt = JWTManager(app)
 
 # MongoDB connection
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/eventdb")
-client = MongoClient(MONGO_URI)
-db = client["eventdb"]
-users = db["users"]
-events = db["events"]
+
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)  # 5s timeout
+    client.admin.command("ping")  # test connection
+    print("✅ Connected to MongoDB Atlas", flush=True)
+    db = client["eventdb"]
+    users = db["users"]
+    events = db["events"]
+except ServerSelectionTimeoutError as e:
+    print("❌ Could not connect to MongoDB Atlas:", e, flush=True)
+    db = None
+    users = None
+    events = None
+
+
 @app.route("/pingdb")
 def pingdb():
     try:
@@ -31,6 +43,7 @@ def pingdb():
         return {"status": "connected"}
     except Exception as e:
         return {"status": "failed", "error": str(e)}
+
 
 # ---------- AUTH ----------
 @app.route("/register", methods=["POST"])
