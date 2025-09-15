@@ -1,3 +1,4 @@
+
 import os
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
@@ -23,6 +24,13 @@ client = MongoClient(MONGO_URI)
 db = client["eventdb"]
 users = db["users"]
 events = db["events"]
+@app.route("/pingdb")
+def pingdb():
+    try:
+        client.admin.command("ping")
+        return {"status": "connected"}
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
 
 # ---------- AUTH ----------
 @app.route("/register", methods=["POST"])
@@ -32,6 +40,7 @@ def register():
     if not username or not password:
         return jsonify({"message": "Missing credentials"}), 400
     if users.find_one({"username": username}):
+
         return jsonify({"message": "User already exists"}), 400
     users.insert_one({
         "username": username,
@@ -91,5 +100,7 @@ def register_student(event_id):
 # ---------- MAIN ----------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
+
 
 
